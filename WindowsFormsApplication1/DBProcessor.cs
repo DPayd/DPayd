@@ -88,8 +88,18 @@ namespace debts {
                 foreach (Peremennie perem in config.peremennie) {
                     configList.Add(perem);
                 }
+
                 restartDbName = config.lastDbName;
                 restartVclstamp = config.lastVclstamp;
+
+                if (!restartDbName.Equals("")) {
+                    // перемещение к базе данных для рестарта
+                    while (configList.Count > 0) {
+                        if (configList[0].dbName.Trim().Equals(restartDbName.Trim()))
+                            break;
+                        configList.RemoveAt(0);
+                    }
+                }
             }
         }
 
@@ -99,6 +109,7 @@ namespace debts {
                 config.lastDbName = lastDbName;
                 config.lastVclstamp = lastVclstamp;
                 serializer.Serialize(stream, config);
+                stream.Close();
             }
         }
 
@@ -123,9 +134,6 @@ namespace debts {
 
             state = State.ConnectionError;
 
-            if (!restartDbName.Equals("")) {
-                // перемещение к базе данных для рестарта
-            }
             configSection = configList[0];
             configList.RemoveAt(0);
 
@@ -244,8 +252,12 @@ namespace debts {
                 connExec.Close();
 
                 bool result = res > 0;
-                if (!result)
+                if (!result) {
                     state = State.ExecSqlError;
+                } else {
+                    lastVclstamp = rec.Vclstamp;
+                    writeConfig();
+                }
 
                 return result;
             }
@@ -296,8 +308,12 @@ namespace debts {
                 connExec.Close();
 
                 bool result = res > 0;
-                if (!result)
+                if (!result) {
                     state = State.ExecSqlError;
+                } else {
+                    lastVclstamp = rec.Vclstamp;
+                    writeConfig();
+                }
 
                 return result;
             }
