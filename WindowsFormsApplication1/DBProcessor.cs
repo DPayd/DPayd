@@ -203,11 +203,48 @@ namespace debts {
                     return false;
             }
 
+            // пишем в ини-файл текущее состояние
+            lastVclstamp = currentIndex == 0 ? "" : debts[currentIndex - 1].Vclstamp;
+            writeConfig();
+
             // присваиваем значения
             varRecord = debts[currentIndex++];
 
+            setPayedAll(varRecord);
+
             return true;
         }
+
+        // запись информации о штрафе
+        public bool setPayedAll(Debt rec) {
+            if (conn == null)
+                return false;
+            if (rec.ID < 0)
+                return false;
+
+            string sqlUpdate =
+                "UPDATE Debts " +
+                "SET Rcdsts = 1 " +
+                "WHERE Tcard = @Tcard";
+
+            using (SqlConnection connExec = new SqlConnection(connStr)) {
+                SqlCommand cmdUpdate = new SqlCommand(sqlUpdate, connExec);
+
+                cmdUpdate.Parameters.AddWithValue("@Tcard", rec.Tcard);
+
+                connExec.Open();
+                int res = cmdUpdate.ExecuteNonQuery();
+                connExec.Close();
+
+                bool result = res > 0;
+                if (!result) {
+                    state = State.ExecSqlError;
+                }
+
+                return result;
+            }
+        }
+
 
         // запись информации о штрафе
         public bool update(Debt rec) {
@@ -254,9 +291,6 @@ namespace debts {
                 bool result = res > 0;
                 if (!result) {
                     state = State.ExecSqlError;
-                } else {
-                    lastVclstamp = rec.Vclstamp;
-                    writeConfig();
                 }
 
                 return result;
@@ -310,9 +344,6 @@ namespace debts {
                 bool result = res > 0;
                 if (!result) {
                     state = State.ExecSqlError;
-                } else {
-                    lastVclstamp = rec.Vclstamp;
-                    writeConfig();
                 }
 
                 return result;
