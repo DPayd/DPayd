@@ -245,7 +245,7 @@ namespace debts {
                 debts.Ofndte = data;
 
 
-                debts.Place = getField(HTML, "Место нарушения").Trim();
+                debts.Place = getField(HTML, "Место нарушения");
 
 
                                 /*
