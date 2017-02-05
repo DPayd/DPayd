@@ -24,6 +24,9 @@ namespace debts {
         string lastDbName;
         string lastVclstamp;
 
+        string restartDbName = "";
+        string restartVclstamp = "";
+
         private SqlConnection conn = null;
         string connStr = "";
 
@@ -86,6 +89,8 @@ namespace debts {
                 foreach (Peremennie perem in config.peremennie) {
                     configList.Add(perem);
                 }
+                restartDbName = config.lastDbName;
+                restartVclstamp = config.lastVclstamp;
             }
         }
 
@@ -135,7 +140,7 @@ namespace debts {
                 "SELECT a.*, b.Des40 AS Brnname " +
                 "FROM Vclmst a INNER JOIN " +
                 "Brnmst b ON b.Brn = a.Brn " +
-                "WHERE(a.Brn IN (" + configSection.Brn + ")) " +
+                "WHERE (a.Brn IN (" + configSection.Brn + ")) AND (Vclstamp > '" + restartVclstamp + "')" +
                 //"      AND(a.Rcdsts < 9) " +
                 "ORDER BY a.Vclstamp";
 
