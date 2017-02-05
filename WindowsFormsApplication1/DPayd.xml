@@ -1,9 +1,7 @@
 <?xml version="1.0"?>
-<ArrayOfPeremennie xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <lastDbName>
-  </lastDbName>
-  <lastVclstamp>
-  </lastVclstamp>
+<Config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <lastDbName></lastDbName>
+  <lastVclstamp></lastVclstamp>
   <peremennie>
     <Peremennie>
       <srvName>192.168.1.90\Standart2000</srvName>
@@ -11,4 +9,4 @@
       <Brn>1</Brn>
     </Peremennie>
   </peremennie>
-</ArrayOfPeremennie>
+</Config>

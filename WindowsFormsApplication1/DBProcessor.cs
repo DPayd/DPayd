@@ -55,13 +55,30 @@ namespace debts {
         }
 
         public class Config {
-            public string lastDbName;
-            public string lastVclstamp;
-
-            public List<Peremennie> peremennie;
+            public string lastDbName = "";
+            public string lastVclstamp = "";
+            public List<Peremennie> peremennie = new List<Peremennie>();
         }
 
         private void readConfig() {
+            /*
+            using (Stream stream = new FileStream(INI_FILE_NAME, FileMode.Create)) {
+                XmlSerializer serializer = new XmlSerializer(typeof(Config));
+                config = new Config();
+                config.lastDbName = "lastDbName";
+                config.lastVclstamp = "lastVclstamp";
+                Peremennie p = new Peremennie();
+                p.Brn = "1,2,3";
+                p.dbName = "dbName";
+                p.srvName = "srvName";
+                config.peremennie.Add(p);
+                config.peremennie.Add(p);
+                config.peremennie.Add(p);
+
+                serializer.Serialize(stream, config);
+                stream.Close();
+            }
+            */
             using (Stream stream = new FileStream(INI_FILE_NAME, FileMode.Open)) {
                 XmlSerializer serializer = new XmlSerializer(typeof(Config));
                 config = (Config)serializer.Deserialize(stream);
