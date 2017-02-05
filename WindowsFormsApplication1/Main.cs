@@ -306,7 +306,7 @@ namespace debts {
                        // debts.PaytoHalf = debts.PaytoHalf.MinValue;
                         debts.SumHalf = 0;
                     }
-                    Clipboard.SetText("Преверено!!!!!!!!!!!!!");
+                    //Clipboard.SetText("Преверено!!!!!!!!!!!!!");
                     if (!workDB(debts)) {
                         MessageBox.Show("Случилась какая-то ошибка во время записи в Debts...");
                     }
