@@ -49,6 +49,12 @@ namespace debts {
             readConfig();
         }
 
+        public class Config {
+            string lastDbName;
+            string lastVclstamp;
+            List<Peremennie> peremennie;
+        }
+
         private void readConfig() {
             using (Stream stream = new FileStream("DPayd.xml", FileMode.Open)) {
                 XmlSerializer serializer = new XmlSerializer(typeof(List<Peremennie>));
