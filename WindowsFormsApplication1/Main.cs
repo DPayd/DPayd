@@ -27,7 +27,6 @@ namespace debts {
         public string mesto;
         public string org_Vlasti;
         public string oops;
-        public int nomer = -1;
         List<string> Listen = new List<string>();
         Debt debts = new Debt();
         DateTime lastGetUriTime = DateTime.Now;
@@ -99,7 +98,7 @@ namespace debts {
         }
 
         private void button1_Click(object sender, EventArgs e) {
-            source_HTTP();
+            //source_HTTP();
         }
 
         private Debt Tcarting() {
@@ -185,32 +184,11 @@ namespace debts {
 
             string oter = Chect;
 
-            if(Checpay != "undefined" && oter == "undefined") {
-                nomer = -1;
+            if ((Checpay != "undefined" && oter == "undefined") || fresh != "display:none;") {
                 source_HTTP();
-                nomer = -1;
-            }
-
-            if (fresh == "display:none;" && Checpay != "undefined" && oter == "undefined") {
-                nomer = -1;
-                source_HTTP();
-                nomer = -1;
-            }
-
-            if (fresh != "display:none;") {
-                nomer = -1;
-                source_HTTP();
-                nomer = -1;
-            }
-
-            if (oter != "undefined") {
-                nomer = -1;
+            } else if (oter != "undefined") {
                 dannie();
-                nomer = -1;
-            }
-
-
-            if (Checpay == "undefined" && oter == "undefined" && fresh == "display:none;") {
+            } else if (Checpay == "undefined" && oter == "undefined" && fresh == "display:none;") {
                 But();
             }
         }
@@ -226,91 +204,79 @@ namespace debts {
         }
 
         private void dannie() {
-            while (nomer != -10) {
-                if (nomer == -10) 
-                    break;
-                
-                dynamic document = (JSObject)webControl1.ExecuteJavascriptWithResult("document");
-                nomer++;
-                string Chec = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[nomer];
+            int nomer = -1;
+            dynamic document = (JSObject)webControl1.ExecuteJavascriptWithResult("document");
+            nomer++;
+            string Chec = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[nomer];
 
-                if (Chec == "undefined" && nomer == 0) {
+            if (Chec == "undefined") {
+                if (nomer == 0)
                     MessageBox.Show("Штрафов не нашлось");
-                    source_HTTP();
-                    nomer = -10;
-                    break;
-                }
 
-                if (Chec == "undefined") {
-                    nomer = -10;
-                    source_HTTP();
-                    break;
-                }
+                source_HTTP();
+                return;
+            }
 
+            dynamic rendConteiner = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[nomer];
+            debts.Ordinance = rendConteiner.getAttribute("id");
+            dynamic HTML = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[nomer].outerHTML;
+            // MessageBox.Show(HTML);
+            //   Clipboard.SetText(HTML);
+            hTML2 = HTML;
+            debts.Reason = getField(HTML, "Правонарушение");
 
-                if (Chec != "undefined") {
-                    dynamic rendConteiner = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[nomer];
-                    debts.Ordinance = rendConteiner.getAttribute("id");
-                    dynamic HTML = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[nomer].outerHTML;
-                    // MessageBox.Show(HTML);
-                    //   Clipboard.SetText(HTML);
-                    hTML2 = HTML;
-                    debts.Reason = getField(HTML, "Правонарушение");
+            string DataPastanov = debts.Reason.Substring(debts.Reason.IndexOf("от") + 2, 12);
+            string dte = DataPastanov.Trim();
+            DateTime dbtdte = DateTime.Parse(dte);
+            debts.Dbtdte = dbtdte;
 
-                    string DataPastanov = debts.Reason.Substring(debts.Reason.IndexOf("от") + 2, 12);
-                    string dte = DataPastanov.Trim();
-                    DateTime dbtdte = DateTime.Parse(dte);
-                    debts.Dbtdte = dbtdte;
+            DateTime Paytodte = DateTime.Parse(dte);
+            debts.Paytodte = Paytodte.AddDays(DAYS_TO_PAY);
 
-                    DateTime Paytodte = DateTime.Parse(dte);
-                    debts.Paytodte = Paytodte.AddDays(DAYS_TO_PAY);
+            //MessageBox.Show(DbtDte);
 
-                    //MessageBox.Show(DbtDte);
+            string datas = getField(HTML, "Дата нарушения");
+            DateTime data = DateTime.Parse(datas);
+            debts.Ofndte = data;
+            /*
+                                mesto = getField(HTML, "Место нарушения");      Это не надо
+                                debts.Mesto = mesto;
 
-                    string datas = getField(HTML, "Дата нарушения");
-                    DateTime data = DateTime.Parse(datas);
-                    debts.Ofndte = data;
-                    /*
-                                        mesto = getField(HTML, "Место нарушения");      Это не надо
-                                        debts.Mesto = mesto;
+                                org_Vlasti = getField(HTML, "Орган власти");
+                                org_Vlasti = org_Vlasti.Replace("&nbsp;","");
+                                org_Vlasti = org_Vlasti.Replace("<br>", "");       Это не надо
+                                org_Vlasti = org_Vlasti.Trim();
+                                debts.Org_vlasti = org_Vlasti;
+            */
 
-                                        org_Vlasti = getField(HTML, "Орган власти");
-                                        org_Vlasti = org_Vlasti.Replace("&nbsp;","");
-                                        org_Vlasti = org_Vlasti.Replace("<br>", "");       Это не надо
-                                        org_Vlasti = org_Vlasti.Trim();
-                                        debts.Org_vlasti = org_Vlasti;
-                    */
+            string Summa = getField(HTML, "Штраф");
+            dynamic summas = Summa.Substring(getFirstNum(Summa), 10);
+            number_only(ref summas);
+            decimal summa = Convert.ToDecimal(summas);
+            debts.Sum = summa;
 
-                    string Summa = getField(HTML, "Штраф");
-                    dynamic summas = Summa.Substring(getFirstNum(Summa), 10);
-                    number_only(ref summas);
-                    decimal summa = Convert.ToDecimal(summas);
-                    debts.Sum = summa;
+            if (hTML2.IndexOf("strike") != -1) {
+                Summa = Summa.Remove(0, Summa.IndexOf(CLOSING_TAG_SPAN) + 7);
+                summas = Summa.Substring(getFirstNum(Summa), 10);
+                number_only(ref summas);
+                decimal summaHalf = Convert.ToDecimal(summas);
+                debts.SumHalf = summaHalf;
 
-                    if (hTML2.IndexOf("strike") != -1) {
-                        Summa = Summa.Remove(0, Summa.IndexOf(CLOSING_TAG_SPAN) + 7);
-                        summas = Summa.Substring(getFirstNum(Summa), 10);
-                        number_only(ref summas);
-                        decimal summaHalf = Convert.ToDecimal(summas);
-                        debts.SumHalf = summaHalf;
-
-                        dynamic paydtoHalf = Summa.Remove(0, Summa.IndexOf(CLOSING_TAG_SPAN) + 7);
-                        paydtoHalf = Summa.Remove(0, Summa.IndexOf("доступна до:"));
-                        paydtoHalf = paydtoHalf.Remove(0, getFirstNum(paydtoHalf));
-                        paydtoHalf = paydtoHalf.Remove(paydtoHalf.IndexOf("<"), 7);
-                        paydtoHalf = paydtoHalf.Trim();
-                        DateTime payToHalf = DateTime.Parse(paydtoHalf);
-                        debts.PaytoHalf = payToHalf;
-                    }
-                    if (hTML2.IndexOf("strike") == -1) {
-                       // debts.PaytoHalf = debts.PaytoHalf.MinValue;
-                        debts.SumHalf = 0;
-                    }
-                    Clipboard.SetText("Преверено!!!!!!!!!!!!!");
-                    if (!workDB(debts)) {
-                        MessageBox.Show("Случилась какая-то ошибка во время записи в Debts...");
-                    }
-                }
+                dynamic paydtoHalf = Summa.Remove(0, Summa.IndexOf(CLOSING_TAG_SPAN) + 7);
+                paydtoHalf = Summa.Remove(0, Summa.IndexOf("доступна до:"));
+                paydtoHalf = paydtoHalf.Remove(0, getFirstNum(paydtoHalf));
+                paydtoHalf = paydtoHalf.Remove(paydtoHalf.IndexOf("<"), 7);
+                paydtoHalf = paydtoHalf.Trim();
+                DateTime payToHalf = DateTime.Parse(paydtoHalf);
+                debts.PaytoHalf = payToHalf;
+            }
+            if (hTML2.IndexOf("strike") == -1) {
+                // debts.PaytoHalf = debts.PaytoHalf.MinValue;
+                debts.SumHalf = 0;
+            }
+            Clipboard.SetText("Преверено!!!!!!!!!!!!!");
+            if (!workDB(debts)) {
+                MessageBox.Show("Случилась какая-то ошибка во время записи в Debts...");
             }
         }
 
@@ -351,7 +317,7 @@ namespace debts {
                     }
                     // debts.Tcard = null;
                 }
-            
+
                 dynamic a = document.getElementById("button_next").focus();
                 dynamic b = document.getElementById("button_next").focus();
                 dynamic buttonNext = document.getElementById("button_next").click();
@@ -364,20 +330,18 @@ namespace debts {
                     //source_HTTP();
                     //source_HTTP();
                     return;
+                } else {
+                    Checc = DateTime.Now;
+                    Checc = Checc.AddSeconds(15);
+                    But();
                 }
 
-            }
-
-            if (oops == "undefined") {
-                Checc = DateTime.Now;
-                Checc = Checc.AddSeconds(15);
-                nomer = -1;
-                But();
             }
         }
 
 
         private void button2_Click(object sender, EventArgs e) {
+            /*
             dynamic document = (JSObject)webControl1.ExecuteJavascriptWithResult("document");
             dynamic Cheсс = document.getElementsByClassName("error error-message")[0];
             string oops = Cheсс;
@@ -387,6 +351,7 @@ namespace debts {
             if (oops != "undefined") {
                 vvod_and_click();
             }
+            */
         }
 
         private void Form1_Load(object sender, EventArgs e) {
