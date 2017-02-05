@@ -302,6 +302,10 @@ namespace debts {
                     String inpName = inp.getAttribute("name");
                     if (inpName.Contains("as_values_")) {
                         int strLen = sts.Length;
+                        if (strLen == 0) {
+                            source_HTTP();
+                            return;
+                        }
                         if (strLen == 10) {
                             inp.focus();
                             inp.value = sts;
