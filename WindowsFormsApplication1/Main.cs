@@ -243,16 +243,19 @@ namespace debts {
                 string datas = getField(HTML, "Дата нарушения");
                 DateTime data = DateTime.Parse(datas);
                 debts.Ofndte = data;
-                /*
-                                    mesto = getField(HTML, "Место нарушения");      Это не надо
-                                    debts.Mesto = mesto;
 
-                                    org_Vlasti = getField(HTML, "Орган власти");
-                                    org_Vlasti = org_Vlasti.Replace("&nbsp;","");
-                                    org_Vlasti = org_Vlasti.Replace("<br>", "");       Это не надо
-                                    org_Vlasti = org_Vlasti.Trim();
-                                    debts.Org_vlasti = org_Vlasti;
-                */
+
+                debts.Place = getField(HTML, "Место нарушения");
+
+
+                                /*
+                                                    org_Vlasti = getField(HTML, "Орган власти");
+                                                    org_Vlasti = org_Vlasti.Replace("&nbsp;","");
+                                                    org_Vlasti = org_Vlasti.Replace("<br>", "");       Это не надо
+                                                    org_Vlasti = org_Vlasti.Trim();
+                                                    debts.Org_vlasti = org_Vlasti;
+                                */
+
 
                 string Summa = getField(HTML, "Штраф");
                 dynamic summas = Summa.Substring(getFirstNum(Summa), 10);
@@ -299,6 +302,10 @@ namespace debts {
                     String inpName = inp.getAttribute("name");
                     if (inpName.Contains("as_values_")) {
                         int strLen = sts.Length;
+                        if (strLen == 0) {
+                            source_HTTP();
+                            return;
+                        }
                         if (strLen == 10) {
                             inp.focus();
                             inp.value = sts;
