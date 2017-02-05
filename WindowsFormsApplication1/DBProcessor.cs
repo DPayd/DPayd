@@ -18,8 +18,13 @@ namespace debts {
 
     // класс для доступа к БД
     public class DBProcessor {
+        private const string INI_FILE_NAME = "DPayd.xml";
+
+        public Config config;
+        string lastDbName;
+        string lastVclstamp;
+
         private SqlConnection conn = null;
-        private SqlConnection connExec = null;
         string connStr = "";
 
         public enum State {
@@ -50,19 +55,29 @@ namespace debts {
         }
 
         public class Config {
-            string lastDbName;
-            string lastVclstamp;
-            List<Peremennie> peremennie;
+            public string lastDbName;
+            public string lastVclstamp;
+
+            public List<Peremennie> peremennie;
         }
 
         private void readConfig() {
-            using (Stream stream = new FileStream("DPayd.xml", FileMode.Open)) {
-                XmlSerializer serializer = new XmlSerializer(typeof(List<Peremennie>));
-                List<Peremennie> config = (List<Peremennie>)serializer.Deserialize(stream);
+            using (Stream stream = new FileStream(INI_FILE_NAME, FileMode.Open)) {
+                XmlSerializer serializer = new XmlSerializer(typeof(Config));
+                config = (Config)serializer.Deserialize(stream);
                 configList.Clear();
-                foreach (Peremennie perem in config) {
+                foreach (Peremennie perem in config.peremennie) {
                     configList.Add(perem);
                 }
+            }
+        }
+
+        private void writeConfig() {
+            using (Stream stream = new FileStream(INI_FILE_NAME, FileMode.Create)) {
+                XmlSerializer serializer = new XmlSerializer(typeof(Config));
+                config.lastDbName = lastDbName;
+                config.lastVclstamp = lastVclstamp;
+                serializer.Serialize(stream, config);
             }
         }
 
@@ -73,9 +88,6 @@ namespace debts {
             if (conn != null)
                 conn.Close();
             conn = null;
-            if (connExec != null)
-                connExec.Close();
-            connExec = null;
         }
 
         public bool connect2NextDBAndReadAll() {
@@ -96,8 +108,9 @@ namespace debts {
             connStr = configSection.makeConnString();
             conn = new SqlConnection(connStr);
             conn.Open();
-            connExec = new SqlConnection(connStr);
-            connExec.Open();
+
+            lastDbName = configSection.dbName;
+            lastVclstamp = "";
 
             state = State.ExecSqlError;
 
