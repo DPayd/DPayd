@@ -2,7 +2,6 @@
 using System.Windows.Forms;
 using Awesomium.Core;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Data.SqlTypes;
 
@@ -13,6 +12,7 @@ namespace debts {
         public const string MSG_WRONG = "Некорректные серия и номер";
         public const string INN_PAYED = "PAYED";
         public const int DAYS_TO_PAY = 70;
+        static public DateTime DEFAULT_DATE = new DateTime(1901, 1, 1);
 
         public CheckDebts() {
             InitializeComponent();
@@ -21,34 +21,31 @@ namespace debts {
         const string SINGLE_SPACE = " ";
         const string DOUBLE_SPACE = "  ";
         const string CLOSING_TAG_P = "</p>";
+        const int VREME_OGID_VVODA = 125;
         const string CLOSING_TAG_SPAN = "</span>";
         public string hTML2;
-        public string pravonarushenie;
-        public string datas;
-        public string tEXT;
         public string mesto;
         public string org_Vlasti;
-        public string Summa;
-        public string S = "77УЕ093445";
-        public string Tecart;
-        public int INT;
+        public string oops;
         public int nomer = -1;
         List<string> Listen = new List<string>();
-        Debts debts = new Debts();
+        Debt debts = new Debt();
         DateTime lastGetUriTime = DateTime.Now;
+        DateTime Checc;
 
         // добавлено Nik
         DBProcessor dbProcessor = new DBProcessor();
 
         string number_only(ref dynamic text) {
-           // text = text.ToString();
+            // text = text.ToString();
             string resultat = "";
             for (int i = 0; i < text.Length; i++)
                 if ((text[i] >= '0') && (text[i] <= '9'))
                     resultat += text[i];
-            tEXT = resultat.Trim(); 
+            string tmp = resultat.Trim();
             //MessageBox.Show(tEXT);
-            text = tEXT;
+            text = tmp;
+
             return text;
         }
 
@@ -61,25 +58,25 @@ namespace debts {
         }
 
         async void But() {
-            await Task.Delay(1000); // 1 секундa
+            await Task.Delay(3000); // 1 секундa
             process();
         }
 
-        public class Debts {
+        public class Debt {
             //это поля из таблицы Debts, которые заполняются, поэтому я тебе буду давать всю эту структуру, вместо Tcard
             // а ты заполнишь те, которые отмечены * плюс те, которые хотел Барк в дополнение
             public SqlDecimal ID;
             public string Vclstamp;
             public SqlDecimal Vcl;
             public string Tcard;
-            public string Reason; //* ?
-            public string Ordinance; //
-            public DateTime Dbtdte; //*  ?
-            public DateTime Ofndte; //*  ?
-            public SqlDecimal Sum; //
-            public SqlDecimal SumHalf; //
-            public DateTime Paytodte; //-
-            public DateTime PaytoHalf; //
+            public string Reason; //+
+            public string Ordinance; //+
+            public DateTime Dbtdte = DEFAULT_DATE; //+
+            public DateTime Ofndte = DEFAULT_DATE; // + 
+            public SqlDecimal Sum; //+
+            public SqlDecimal SumHalf; //+
+            public DateTime Paytodte = DEFAULT_DATE; //+
+            public DateTime PaytoHalf = DEFAULT_DATE; //+
             public SqlDecimal Brn;
             public string Brnname;
             public string Regnum;
@@ -105,85 +102,107 @@ namespace debts {
             source_HTTP();
         }
 
-        private Debts Tcarting() {
-            // Здесь надо подкл, к БД и получить Tecart.
-            Debts nextDebts = new Debts();
+        private Debt Tcarting() {
+            // Здесь надо подкл, к БД и получить debts.Tcard.
+            Debt nextDebts = new Debt();
             // Передача параметра ПО ЗНАЧЕНИЮ!!!
-            if (dbProcessor.readNextTcard(ref nextDebts)) {
 
+            if (!dbProcessor.getNextTcard(ref nextDebts)) {
+                if (dbProcessor.state == DBProcessor.State.Normal)
+                    MessageBox.Show("Процесс завершён успешно");
+                else
+                    MessageBox.Show("При попытке чтения произошла критическая ошибка: " + dbProcessor.state);
+
+                Application.Exit();
             }
+
             return nextDebts;
         }
-//        dynamic document = (JSObject)webControl1.ExecuteJavascriptWithResult("document");
-//        dynamic inputs = document.getElementsByTagName("input");
-//        int lenInputs = (int)inputs.length;
-//            for (int i = 0; i<lenInputs; i++) {
-//                dynamic inp = document.getElementsByTagName("input")[i];
-//        String inpName = inp.getAttribute("name");
-//                if (inpName.Contains("as_values_")) {
-//                    Tecart = Tcarting().Tcard;
-//            if (Tecart != "") {
-//                MessageBox.Show(Tecart);
-//                vvod_and_click(); // !!!!!!!!!!!!! это неправильно: вызывать функцию из себя же (специальный приём - рекурсия).
-//                                  // Но он здесь ни к чему. Кроме того, при рекурсии параметры передаются через стек, который может переполниться (он ограничен)
-//                                  // !!!! Используй цикл, например while (Ты понимаешь, что такое функция? Что такое вернуть значение?)
-//        Tecart = "";
-//            }
+        //        dynamic document = (JSObject)webControl1.ExecuteJavascriptWithResult("document");
+        //        dynamic inputs = document.getElementsByTagName("input");
+        //        int lenInputs = (int)inputs.length;
+        //            for (int i = 0; i<lenInputs; i++) {
+        //                dynamic inp = document.getElementsByTagName("input")[i];
+        //        String inpName = inp.getAttribute("name");
+        //                if (inpName.Contains("as_values_")) {
+        //                    debts.Tcard = Tcarting().Tcard;
+        //            if (debts.Tcard != "") {
+        //                MessageBox.Show(debts.Tcard);
+        //                vvod_and_click(); // !!!!!!!!!!!!! это неправильно: вызывать функцию из себя же (специальный приём - рекурсия).
+        //                                  // Но он здесь ни к чему. Кроме того, при рекурсии параметры передаются через стек, который может переполниться (он ограничен)
+        //                                  // !!!! Используй цикл, например while (Ты понимаешь, что такое функция? Что такое вернуть значение?)
+        //        debts.Tcard = "";
+        //            }
 
-//            if (Tecart == "") {
-//                MessageBox.Show("Tcard закончИлись");
-//            }
+        //            if (debts.Tcard == "") {
+        //                MessageBox.Show("Tcard закончИлись");
+        //            }
 
-//inp.focus();
-//                inp.value = "77УЕ093445";
-//                int strLen = Tecart.Length;
-//                if (strLen == 10) {
-//                    inp.value = Tecart;
-//                }
+        //inp.focus();
+        //                inp.value = "77УЕ093445";
+        //                int strLen = debts.Tcard.Length;
+        //                if (strLen == 10) {
+        //                    inp.value = debts.Tcard;
+        //                }
 
-//                if (strLen > 10) {
-//                    if (Tecart.IndexOf('№') > -1) {
-//                        Tecart = Tecart.Replace("№", "");
-//                        inp.value = Tecart;
-//                    }
-//                }
+        //                if (strLen > 10) {
+        //                    if (debts.Tcard.IndexOf('№') > -1) {
+        //                        debts.Tcard = debts.Tcard.Replace("№", "");
+        //                        inp.value = debts.Tcard;
+        //                    }
+        //                }
 
-//                //  MessageBox.Show(inp.getAttribute("id"));
-//                break;
-//            }
-//            // Tecart = null;
-//        }
-//        dynamic b = document.getElementById("button_next").focus();
-//dynamic buttonNext = document.getElementById("button_next").click();
-////buttonNext.focus();
-////buttonNext.click();
+        //                //  MessageBox.Show(inp.getAttribute("id"));
+        //                break;
+        //            }
+        //            // debts.Tcard = null;
+        //        }
+        //        dynamic b = document.getElementById("button_next").focus();
+        //dynamic buttonNext = document.getElementById("button_next").click();
+        ////buttonNext.focus();
+        ////buttonNext.click();
 
-//dynamic Che = document.getElementsByClassName("error error-message")[0];
-//string oops = Che;
-//            if (oops != "undefined") {
-//                vvod_and_click();
-//    }
-//            But();
-//}
+        //dynamic Che = document.getElementsByClassName("error error-message")[0];
+        //string oops = Che;
+        //            if (oops != "undefined") {
+        //                vvod_and_click();
+        //    }
+        //            But();
+        //}
 
-        private void workDB(Debts rec) {
+        private bool workDB(Debt rec) {
             //Здесь надо положить в ДБ debts.Pravonarushenie и т.д
-            if (dbProcessor.check(ref rec))
-                dbProcessor.update(rec);
-            else
-                dbProcessor.insert(rec);
+            bool check = dbProcessor.check(ref rec);
+            return check ? dbProcessor.update(rec) : dbProcessor.insert(rec);
         }
 
         private void process() {
             dynamic document = (JSObject)webControl1.ExecuteJavascriptWithResult("document");
-            dynamic Chect = document.getElementsByClassName("rendered_charge_container")[0];
+            dynamic Chect = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[0];
+            dynamic Chec1 = document.getElementById("hasNoFines");
+            string fresh = Chec1.getAttribute("style");
+
             string oter = Chect;
+
+            if (fresh == "display: block;") {
+                nomer = -1;
+                source_HTTP();
+                nomer = -1;
+            } 
+
+
+
+
+            But();
+
+
+
             if (oter != "undefined") {
+                nomer = -1;
                 dannie();
+                nomer = -1;
             }
-            if (oter == "undefined") {
-                But();
-            }
+
         }
 
         private void Awesomium_Windows_Forms_WebControl_DocumentReady(object sender, DocumentReadyEventArgs e) {
@@ -192,53 +211,56 @@ namespace debts {
                 vvod_and_click();
         }
 
-        private void source_HTTP() 
-        {
+        private void source_HTTP() {
             webControl1.Source = new Uri("https://www.mos.ru/pgu/ru/application/gibdd/fines/?utm_source=mos&utm_medium=ek&utm_campaign=85532&utm_term=884533#step_1");
         }
 
         private void dannie() {
-            while(nomer != -10) {
-                if (nomer == -10)
+            while (nomer != -10) {
+                if (nomer == -10) 
                     break;
+                
                 dynamic document = (JSObject)webControl1.ExecuteJavascriptWithResult("document");
                 nomer++;
                 dynamic Chec = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[nomer];
                 string sr = Chec;
 
-                if (sr == "undefined") {
+                if (sr == "undefined" && nomer == 0) {
+                    MessageBox.Show("Штрафов не нашлось");
+                    source_HTTP();
                     nomer = -10;
                     break;
                 }
 
-                if (sr == "undefined" && nomer == 0) {
-                        MessageBox.Show("Штрафов не нашлось");
-                        nomer = -10;
+                if (sr == "undefined") {
+                    nomer = -10;
+                    source_HTTP();
                     break;
                 }
+
+
                 if (sr != "undefined") {
                     dynamic rendConteiner = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[nomer];
-                    string Ordinance = rendConteiner.getAttribute("id");
-                    debts.Ordinance = Ordinance;
+                    debts.Ordinance = rendConteiner.getAttribute("id");
                     dynamic HTML = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[nomer].outerHTML;
                     // MessageBox.Show(HTML);
                     //   Clipboard.SetText(HTML);
                     hTML2 = HTML;
-                    pravonarushenie = getField(HTML, "Правонарушение");
-                    debts.Reason = pravonarushenie;
+                    debts.Reason = getField(HTML, "Правонарушение");
 
+                    string DataPastanov = debts.Reason.Substring(debts.Reason.IndexOf("от") + 2, 12);
+                    string dte = DataPastanov.Trim();
+                    DateTime dbtdte = DateTime.Parse(dte);
+                    debts.Dbtdte = dbtdte;
 
-                    string DataPastanov = pravonarushenie.Substring(pravonarushenie.IndexOf("от") + 2, 12);
-                    DataPastanov = DataPastanov.Trim();
+                    DateTime Paytodte = DateTime.Parse(dte);
+                    debts.Paytodte = Paytodte.AddDays(DAYS_TO_PAY);
 
                     //MessageBox.Show(DbtDte);
 
-                    datas = getField(HTML, "Дата нарушения");
+                    string datas = getField(HTML, "Дата нарушения");
                     DateTime data = DateTime.Parse(datas);
                     debts.Ofndte = data;
-
-                    debts.Dbtdte = data.AddDays(DAYS_TO_PAY);
-                    string gdcgd = debts.Dbtdte.ToString();
                     /*
                                         mesto = getField(HTML, "Место нарушения");      Это не надо
                                         debts.Mesto = mesto;
@@ -250,8 +272,7 @@ namespace debts {
                                         debts.Org_vlasti = org_Vlasti;
                     */
 
-                    Summa = getField(HTML, "Штраф");
-
+                    string Summa = getField(HTML, "Штраф");
                     dynamic summas = Summa.Substring(getFirstNum(Summa), 10);
                     number_only(ref summas);
                     decimal summa = Convert.ToDecimal(summas);
@@ -271,29 +292,23 @@ namespace debts {
                         paydtoHalf = paydtoHalf.Trim();
                         DateTime payToHalf = DateTime.Parse(paydtoHalf);
                         debts.PaytoHalf = payToHalf;
-                        string fhdu = "mdu";
                     }
                     if (hTML2.IndexOf("strike") == -1) {
-                        //debts.PaytoHalf = ;
+                       // debts.PaytoHalf = debts.PaytoHalf.MinValue;
                         debts.SumHalf = 0;
                     }
+
+                    if (!workDB(debts)) {
+                        MessageBox.Show("Случилась какая-то ошибка во время записи в Debts...");
                     }
-                //if (sr == "undefined") {
-                //    nomer = -10;
-                //    MessageBox.Show("Проверка закончена!");
-                //    break;
-                //    //  source_HTTP();
-
-                //}
-
-
-
+                }
             }
         }
+
         private void vvod_and_click() {
-            while (Tecart != "") 
-                
-            {
+            debts = Tcarting();
+            string sts = debts.Tcard;
+            if (dbProcessor.state == DBProcessor.State.Normal) {
                 //Ввожу данные
                 dynamic document = (JSObject)webControl1.ExecuteJavascriptWithResult("document");
                 dynamic inputs = document.getElementsByTagName("input");
@@ -302,45 +317,58 @@ namespace debts {
                     dynamic inp = document.getElementsByTagName("input")[i];
                     String inpName = inp.getAttribute("name");
                     if (inpName.Contains("as_values_")) {
-                        //Tecart = Tcarting().Tcard;
-                        Tecart = "77УЕ093445";
-                       // inp.value = Tecart;
-                        int strLen = Tecart.Length;
+                        //debts.Tcard = "77УЕ093445";
+                        // inp.value = debts.Tcard;
+                        int strLen = sts.Length;
                         if (strLen == 10) {
                             inp.focus();
-                            inp.value = Tecart;
-                            Tecart = "";
+                            inp.value = sts;
+                            dynamic hdshd = document.getElementById("driverLicenceSerie").focus();
+                            System.Threading.Thread.Sleep(1000);
+                            debts.Tcard = "";
+                            break;
                             //  inp.focus();
                         }
 
                         if (strLen > 10) {
-                            if (Tecart.IndexOf('№') > -1) {
-                                Tecart = Tecart.Replace("№", "");
-                                inp.value = Tecart;
+                            if (debts.Tcard.IndexOf('№') > -1) {
+                                debts.Tcard = debts.Tcard.Replace("№", "");
+                                inp.focus();
+                                inp.value = debts.Tcard;
                             }
                         }
                         //  MessageBox.Show(inp.getAttribute("id"));
                         break;
                     }
-                    // Tecart = null;
+                    // debts.Tcard = null;
                 }
+            
+                dynamic a = document.getElementById("button_next").focus();
                 dynamic b = document.getElementById("button_next").focus();
                 dynamic buttonNext = document.getElementById("button_next").click();
                 //buttonNext.focus();
                 //buttonNext.click();
 
                 dynamic Che = document.getElementsByClassName("error error-message")[0];
-                string oops = Che;
+                oops = Che;
                 if (oops != "undefined") {
-                    vvod_and_click();
-                 }
+                    //source_HTTP();
+                    //source_HTTP();
+                    return;
+                }
+
+            }
+
+            if (oops == "undefined") {
+                Checc = DateTime.Now;
+                Checc = Checc.AddSeconds(15);
+                nomer = -1;
                 But();
             }
-            But();
         }
 
 
-private void button2_Click(object sender, EventArgs e) {
+        private void button2_Click(object sender, EventArgs e) {
             dynamic document = (JSObject)webControl1.ExecuteJavascriptWithResult("document");
             dynamic Cheсс = document.getElementsByClassName("error error-message")[0];
             string oops = Cheсс;

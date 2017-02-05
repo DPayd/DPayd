@@ -19,10 +19,30 @@ namespace debts {
     // класс для доступа к БД
     public class DBProcessor {
         private SqlConnection conn = null;
-        private SqlDataReader sdr = null;
+        private SqlConnection connExec = null;
+        string connStr = "";
 
+        public enum State {
+            Normal,
+            Succefull,
+            ReadError,
+            ConnectionError,
+            ExecSqlError
+        }
+
+        public State state = State.Normal;
         Peremennie configSection;
         List<Peremennie> configList = new List<Peremennie>();
+
+        // переменные для хранения текущего списка автомобилей
+        List<Debt> debts = new List<Debt>();
+        int currentIndex = 0;
+        int debtsSize = 0;
+        bool debtsEnd() {
+            // достигли конца текущего списка атовмобилей
+            return currentIndex >= debtsSize;
+        }
+
 
         // конструктор: в нём идёт только чтение конфигурации
         public DBProcessor() {
@@ -30,7 +50,6 @@ namespace debts {
         }
 
         private void readConfig() {
-            sdr = null;
             using (Stream stream = new FileStream("DPayd.xml", FileMode.Open)) {
                 XmlSerializer serializer = new XmlSerializer(typeof(List<Peremennie>));
                 List<Peremennie> config = (List<Peremennie>)serializer.Deserialize(stream);
@@ -41,29 +60,40 @@ namespace debts {
             }
         }
 
-        // закрытие ранее открытых SqlDataReader и SqlConnection
+        // закрытие ранее открытого SqlConnection и чистка существующего списка автомобилей
         private void closeCurrentConnection() {
-            if (sdr != null)
-                sdr.Close();
-            sdr = null;
+            debts.Clear();
+            connStr = "";
             if (conn != null)
                 conn.Close();
             conn = null;
+            if (connExec != null)
+                connExec.Close();
+            connExec = null;
         }
 
-        public bool connect2NextDB() {
+        public bool connect2NextDBAndReadAll() {
             // закрытие ранее открытых SqlDataReader и SqlConnection
             closeCurrentConnection();
 
             // соединение со следующей БД
-            if (configList.Count == 0)
+            if (configList.Count == 0) {
+                state = State.Succefull;
                 return false;
+            }
+
+            state = State.ConnectionError;
+
             configSection = configList[0];
             configList.RemoveAt(0);
 
-            string connStr = configSection.makeConnString();
+            connStr = configSection.makeConnString();
             conn = new SqlConnection(connStr);
             conn.Open();
+            connExec = new SqlConnection(connStr);
+            connExec.Open();
+
+            state = State.ExecSqlError;
 
             string sql =
                 "SELECT a.*, b.Des40 AS Brnname " +
@@ -74,7 +104,23 @@ namespace debts {
                 "ORDER BY a.Vclstamp";
 
             SqlCommand sqlReadDB = new SqlCommand(sql, conn);
-            sdr = sqlReadDB.ExecuteReader();
+            SqlDataReader sdr = sqlReadDB.ExecuteReader();
+
+            state = State.ReadError;
+
+            while (sdr.Read()) {
+                Debt debt = new Debt();
+                debt.Vclstamp = readerGetString(sdr, "Vclstamp");
+                debt.Vcl = readerGetNumeric(sdr, "Vcl");
+                debt.Tcard = readerGetString(sdr, "Tcard").Trim();
+                debt.Brn = readerGetNumeric(sdr, "Brn");
+                debt.Brnname = readerGetString(sdr, "Brnname").Trim();
+                debt.Regnum = readerGetString(sdr, "Regnum").Trim();
+                debts.Add(debt);
+            }
+            sdr.Close();
+
+            state = State.Normal;
 
             return true;
         }
@@ -92,33 +138,28 @@ namespace debts {
         }
 
         // вызывается для чтения следущей записи (параметр varTcard передаётся по ссылке!!!)
-        public bool readNextTcard(ref Debts varRecord) {
-            if (sdr == null || conn == null)
+        public bool getNextTcard(ref Debt varRecord) {
+            if (conn == null)
                 // первый вызов...
-                if (!connect2NextDB())
+                if (!connect2NextDBAndReadAll())
                     // если закончились базы данных, то завершаем
                     return false;
 
-            while (!sdr.Read()) {
-                // записи закончились...
-                if (!connect2NextDB())
+            while (!debtsEnd()) {
+                // дошли до конца списка...
+                if (!connect2NextDBAndReadAll())
                     // если закончились базы данных, то завершаем
                     return false;
             }
 
             // присваиваем значения
-            varRecord.Vclstamp = readerGetString(sdr, "Vclstamp");
-            varRecord.Vcl = readerGetNumeric(sdr, "Vcl");
-            varRecord.Tcard = readerGetString(sdr, "Tcard").Trim();
-            varRecord.Brn = readerGetNumeric(sdr, "Brn");
-            varRecord.Brnname = readerGetString(sdr, "Brnname").Trim();
-            varRecord.Regnum = readerGetString(sdr, "Regnum").Trim();
+            varRecord = debts[currentIndex++];
 
             return true;
         }
 
         // запись информации о штрафе
-        public bool update(Debts rec) {
+        public bool update(Debt rec) {
             if (conn == null)
                 return false;
             if (rec.ID < 0)
@@ -129,97 +170,116 @@ namespace debts {
                 "SET " +
                 "Vclstamp = @Vclstamp, Vcl = @Vcl, Tcard = @Tcard, Reason = @Reason, Dbtdte = @Dbtdte, Ofndte = @Ofndte, " +
                 "Sum = @Sum, SumHalf = @SumHalf, Paytodte = @Paytodte, PaytoHalf = @PaytoHalf, " +
-                "Brn = @Brn, Brnname = @Brnname, Regnum = @Regnum " +
+                "Brn = @Brn, Brnname = @Brnname, Regnum = @Regnum, " +
                 "Lstchgby = @Lstchgby, Lstchgdte = @Lstchgdte " +
                 "WHERE ID = @ID";
 
-            SqlCommand cmdUpdate = new SqlCommand(sqlUpdate, conn);
-            cmdUpdate.Parameters.AddWithValue("@ID", rec.ID);
-            cmdUpdate.Parameters.AddWithValue("@Vclstamp", rec.Vclstamp);
-            cmdUpdate.Parameters.AddWithValue("@Vcl", rec.Vcl);
-            cmdUpdate.Parameters.AddWithValue("@Tcard", rec.Tcard);
-            cmdUpdate.Parameters.AddWithValue("@Reason", rec.Reason);
-            cmdUpdate.Parameters.AddWithValue("@Dbtdte", rec.Dbtdte);
-            cmdUpdate.Parameters.AddWithValue("@Ofndte", rec.Ofndte);
-            cmdUpdate.Parameters.AddWithValue("@Sum", rec.Sum);
-            cmdUpdate.Parameters.AddWithValue("@SumHalf", rec.SumHalf);
-            cmdUpdate.Parameters.AddWithValue("@Paytodte", rec.Paytodte);
-            cmdUpdate.Parameters.AddWithValue("@PaytoHalf", rec.PaytoHalf);
-            cmdUpdate.Parameters.AddWithValue("@Brn", rec.Brn);
-            cmdUpdate.Parameters.AddWithValue("@Brnname", rec.Brnname);
-            cmdUpdate.Parameters.AddWithValue("@Regnum", rec.Regnum);
+            using (SqlConnection connExec = new SqlConnection(connStr)) {
+                SqlCommand cmdUpdate = new SqlCommand(sqlUpdate, connExec);
+                cmdUpdate.Parameters.AddWithValue("@ID", rec.ID);
+                cmdUpdate.Parameters.AddWithValue("@Vclstamp", rec.Vclstamp);
+                cmdUpdate.Parameters.AddWithValue("@Vcl", rec.Vcl);
+                cmdUpdate.Parameters.AddWithValue("@Tcard", rec.Tcard);
+                cmdUpdate.Parameters.AddWithValue("@Reason", rec.Reason);
+                cmdUpdate.Parameters.AddWithValue("@Dbtdte", rec.Dbtdte);
+                cmdUpdate.Parameters.AddWithValue("@Ofndte", rec.Ofndte);
+                cmdUpdate.Parameters.AddWithValue("@Sum", rec.Sum);
+                cmdUpdate.Parameters.AddWithValue("@SumHalf", rec.SumHalf);
+                cmdUpdate.Parameters.AddWithValue("@Paytodte", rec.Paytodte);
+                cmdUpdate.Parameters.AddWithValue("@PaytoHalf", rec.PaytoHalf);
+                cmdUpdate.Parameters.AddWithValue("@Brn", rec.Brn);
+                cmdUpdate.Parameters.AddWithValue("@Brnname", rec.Brnname);
+                cmdUpdate.Parameters.AddWithValue("@Regnum", rec.Regnum);
 
-            // установка времени и кем изменена запись
-            cmdUpdate.Parameters.AddWithValue("@Lstchgby", SERVICE_NAME);
-            cmdUpdate.Parameters.AddWithValue("@Lstchgdte", DateTime.Now);
-            int res = cmdUpdate.ExecuteNonQuery();
+                // установка времени и кем изменена запись
+                cmdUpdate.Parameters.AddWithValue("@Lstchgby", SERVICE_NAME);
+                cmdUpdate.Parameters.AddWithValue("@Lstchgdte", DateTime.Now);
 
-            return res > 0;
+                connExec.Open();
+                int res = cmdUpdate.ExecuteNonQuery();
+                connExec.Close();
+
+                bool result = res > 0;
+                if (!result)
+                    state = State.ExecSqlError;
+
+                return result;
+            }
         }
 
-        public bool insert(Debts rec) {
+        public bool insert(Debt rec) {
             if (conn == null)
-                return false;
-            if (rec.ID < 0)
                 return false;
 
             string sqlInsert =
                 "INSERT INTO Debts (" +
-                "Vclstamp, Vcl, Tcard, Reason, Ordinance, Dbtdte, Ofndte, Ofndte, " +
+                "Vclstamp, Vcl, Tcard, Reason, Ordinance, Dbtdte, Ofndte, " +
                 "Sum, SumHalf, Paytodte, PaytoHalf, Brn, Brnname, Regnum, " +
                 "Entby, Entdte, Lstchgby, Lstchgdte" +
                 ") " +
                 "VALUES(" +
-                "@Vclstamp, @Vcl, @Tcard, @Reason, @Ordinance, @Dbtdte, @Ofndte, @Ofndte, " +
+                "@Vclstamp, @Vcl, @Tcard, @Reason, @Ordinance, @Dbtdte, @Ofndte, " +
                 "@Sum, @SumHalf, @Paytodte, @PaytoHalf, @Brn, @Brnname, @Regnum, " +
                 "@Entby, @Entdte, @Lstchgby, @Lstchgdte" +
                 ")";
 
-            SqlCommand cmdInsert = new SqlCommand(sqlInsert, conn);
-            cmdInsert.Parameters.AddWithValue("@Vclstamp", rec.Vclstamp);
-            cmdInsert.Parameters.AddWithValue("@Vcl", rec.Vcl);
-            cmdInsert.Parameters.AddWithValue("@Tcard", rec.Tcard);
-            cmdInsert.Parameters.AddWithValue("@Reason", rec.Reason);
-            cmdInsert.Parameters.AddWithValue("@Ordinance", rec.Ordinance);
-            cmdInsert.Parameters.AddWithValue("@Dbtdte", rec.Dbtdte);
-            cmdInsert.Parameters.AddWithValue("@Ofndte", rec.Ofndte);
-            cmdInsert.Parameters.AddWithValue("@Sum", rec.Sum);
-            cmdInsert.Parameters.AddWithValue("@SumHalf", rec.SumHalf);
-            cmdInsert.Parameters.AddWithValue("@Paytodte", rec.Paytodte);
-            cmdInsert.Parameters.AddWithValue("@PaytoHalf", rec.PaytoHalf);
-            cmdInsert.Parameters.AddWithValue("@Brn", rec.Brn);
-            cmdInsert.Parameters.AddWithValue("@Brnname", rec.Brnname);
-            cmdInsert.Parameters.AddWithValue("@Regnum", rec.Regnum);
+            using (SqlConnection connExec = new SqlConnection(connStr)) {
+                SqlCommand cmdInsert = new SqlCommand(sqlInsert, connExec);
+                cmdInsert.Parameters.AddWithValue("@Vclstamp", rec.Vclstamp);
+                cmdInsert.Parameters.AddWithValue("@Vcl", rec.Vcl);
+                cmdInsert.Parameters.AddWithValue("@Tcard", rec.Tcard);
+                cmdInsert.Parameters.AddWithValue("@Reason", rec.Reason);
+                cmdInsert.Parameters.AddWithValue("@Ordinance", rec.Ordinance);
+                cmdInsert.Parameters.AddWithValue("@Dbtdte", rec.Dbtdte);
+                cmdInsert.Parameters.AddWithValue("@Ofndte", rec.Ofndte);
+                cmdInsert.Parameters.AddWithValue("@Sum", rec.Sum);
+                cmdInsert.Parameters.AddWithValue("@SumHalf", rec.SumHalf);
+                cmdInsert.Parameters.AddWithValue("@Paytodte", rec.Paytodte);
+                cmdInsert.Parameters.AddWithValue("@PaytoHalf", rec.PaytoHalf);
+                cmdInsert.Parameters.AddWithValue("@Brn", rec.Brn);
+                cmdInsert.Parameters.AddWithValue("@Brnname", rec.Brnname);
+                cmdInsert.Parameters.AddWithValue("@Regnum", rec.Regnum);
 
-            // установка времени и кем добавлена/изменена запись
-            cmdInsert.Parameters.AddWithValue("@Entby", SERVICE_NAME);
-            cmdInsert.Parameters.AddWithValue("@Entdte", DateTime.Now);
-            cmdInsert.Parameters.AddWithValue("@Lstchgby", SERVICE_NAME);
-            cmdInsert.Parameters.AddWithValue("@Lstchgdte", DateTime.Now);
-            int res = cmdInsert.ExecuteNonQuery();
+                // установка времени и кем добавлена/изменена запись
+                cmdInsert.Parameters.AddWithValue("@Entby", SERVICE_NAME);
+                cmdInsert.Parameters.AddWithValue("@Entdte", DateTime.Now);
+                cmdInsert.Parameters.AddWithValue("@Lstchgby", SERVICE_NAME);
+                cmdInsert.Parameters.AddWithValue("@Lstchgdte", DateTime.Now);
 
-            return res > 0;
+                connExec.Open();
+                int res = cmdInsert.ExecuteNonQuery();
+                connExec.Close();
+
+                bool result = res > 0;
+                if (!result)
+                    state = State.ExecSqlError;
+
+                return result;
+            }
         }
 
         // проверка на наличие записи с указанным номером постановления в БД
-        public bool check(ref Debts rec) {
+        public bool check(ref Debt rec) {
             if (conn == null)
                 return false;
 
             string sql = "SELECT * FROM Debts WHERE Ordinance = @Ordinance";
 
-            SqlCommand sqlReadDB = new SqlCommand(sql, conn);
-            sqlReadDB.Parameters.AddWithValue("@Ordinance", rec.Ordinance);
-            SqlDataReader sdrCheck = sqlReadDB.ExecuteReader();
+            using (SqlCommand sqlReadDB = new SqlCommand(sql, conn)) {
+                sqlReadDB.Parameters.AddWithValue("@Ordinance", rec.Ordinance);
+                SqlDataReader sdrCheck = sqlReadDB.ExecuteReader();
 
-            if (sdrCheck.Read()) {
-                rec.ID = readerGetNumeric(sdrCheck, "ID");
-                return true;
+                bool result = sdrCheck.Read();
+                if (result) {
+                    rec.ID = readerGetNumeric(sdrCheck, "ID");
+                }
+                sdrCheck.Close();
+
+                if (!result)
+                    rec.ID = -1;
+
+                return result;
             }
-
-            rec.ID = -1;
-
-            return false;
         }
 
     }
