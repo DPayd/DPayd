@@ -178,24 +178,30 @@ namespace debts {
 
         private void process() {
             dynamic document = (JSObject)webControl1.ExecuteJavascriptWithResult("document");
+            string Checpay = document.getElementById("payed").getElementsByClassName("rendered_charge_container")[0];
             dynamic Chect = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[0];
             dynamic Chec1 = document.getElementById("hasNoFines");
             string fresh = Chec1.getAttribute("style");
 
             string oter = Chect;
 
-            if (fresh == "display: block;") {
+            if(Checpay != "undefined" && oter == "undefined") {
                 nomer = -1;
                 source_HTTP();
                 nomer = -1;
-            } 
+            }
 
+            if (fresh == "display:none;" && Checpay != "undefined" && oter == "undefined") {
+                nomer = -1;
+                source_HTTP();
+                nomer = -1;
+            }
 
-
-
-            But();
-
-
+            if (fresh != "display:none;") {
+                nomer = -1;
+                source_HTTP();
+                nomer = -1;
+            }
 
             if (oter != "undefined") {
                 nomer = -1;
@@ -203,6 +209,10 @@ namespace debts {
                 nomer = -1;
             }
 
+
+            if (Checpay == "undefined" && oter == "undefined" && fresh == "display:none;") {
+                But();
+            }
         }
 
         private void Awesomium_Windows_Forms_WebControl_DocumentReady(object sender, DocumentReadyEventArgs e) {
@@ -222,24 +232,23 @@ namespace debts {
                 
                 dynamic document = (JSObject)webControl1.ExecuteJavascriptWithResult("document");
                 nomer++;
-                dynamic Chec = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[nomer];
-                string sr = Chec;
+                string Chec = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[nomer];
 
-                if (sr == "undefined" && nomer == 0) {
+                if (Chec == "undefined" && nomer == 0) {
                     MessageBox.Show("Штрафов не нашлось");
                     source_HTTP();
                     nomer = -10;
                     break;
                 }
 
-                if (sr == "undefined") {
+                if (Chec == "undefined") {
                     nomer = -10;
                     source_HTTP();
                     break;
                 }
 
 
-                if (sr != "undefined") {
+                if (Chec != "undefined") {
                     dynamic rendConteiner = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[nomer];
                     debts.Ordinance = rendConteiner.getAttribute("id");
                     dynamic HTML = document.getElementById("npayed").getElementsByClassName("rendered_charge_container")[nomer].outerHTML;
@@ -297,7 +306,7 @@ namespace debts {
                        // debts.PaytoHalf = debts.PaytoHalf.MinValue;
                         debts.SumHalf = 0;
                     }
-
+                    Clipboard.SetText("Преверено!!!!!!!!!!!!!");
                     if (!workDB(debts)) {
                         MessageBox.Show("Случилась какая-то ошибка во время записи в Debts...");
                     }
