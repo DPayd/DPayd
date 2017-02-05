@@ -51,7 +51,6 @@ namespace debts {
             return currentIndex >= debtsSize;
         }
 
-
         // конструктор: в нём идёт только чтение конфигурации
         public DBProcessor() {
             readConfig();
@@ -124,6 +123,9 @@ namespace debts {
 
             state = State.ConnectionError;
 
+            if (!restartDbName.Equals("")) {
+                // перемещение к базе данных для рестарта
+            }
             configSection = configList[0];
             configList.RemoveAt(0);
 
@@ -211,7 +213,7 @@ namespace debts {
                 "SET " +
                 "Vclstamp = @Vclstamp, Vcl = @Vcl, Tcard = @Tcard, Reason = @Reason, Dbtdte = @Dbtdte, Ofndte = @Ofndte, " +
                 "Sum = @Sum, SumHalf = @SumHalf, Paytodte = @Paytodte, PaytoHalf = @PaytoHalf, " +
-                "Brn = @Brn, Brnname = @Brnname, Regnum = @Regnum, " +
+                "Brn = @Brn, Brnname = @Brnname, Regnum = @Regnum, Place = @Place, " +
                 "Lstchgby = @Lstchgby, Lstchgdte = @Lstchgdte " +
                 "WHERE ID = @ID";
 
@@ -231,6 +233,7 @@ namespace debts {
                 cmdUpdate.Parameters.AddWithValue("@Brn", rec.Brn);
                 cmdUpdate.Parameters.AddWithValue("@Brnname", rec.Brnname);
                 cmdUpdate.Parameters.AddWithValue("@Regnum", rec.Regnum);
+                cmdUpdate.Parameters.AddWithValue("@Place", rec.Place);
 
                 // установка времени и кем изменена запись
                 cmdUpdate.Parameters.AddWithValue("@Lstchgby", SERVICE_NAME);
@@ -255,12 +258,12 @@ namespace debts {
             string sqlInsert =
                 "INSERT INTO Debts (" +
                 "Vclstamp, Vcl, Tcard, Reason, Ordinance, Dbtdte, Ofndte, " +
-                "Sum, SumHalf, Paytodte, PaytoHalf, Brn, Brnname, Regnum, " +
+                "Sum, SumHalf, Paytodte, PaytoHalf, Brn, Brnname, Regnum, Place, " +
                 "Entby, Entdte, Lstchgby, Lstchgdte" +
                 ") " +
                 "VALUES(" +
                 "@Vclstamp, @Vcl, @Tcard, @Reason, @Ordinance, @Dbtdte, @Ofndte, " +
-                "@Sum, @SumHalf, @Paytodte, @PaytoHalf, @Brn, @Brnname, @Regnum, " +
+                "@Sum, @SumHalf, @Paytodte, @PaytoHalf, @Brn, @Brnname, @Regnum, @Place, " +
                 "@Entby, @Entdte, @Lstchgby, @Lstchgdte" +
                 ")";
 
@@ -280,6 +283,7 @@ namespace debts {
                 cmdInsert.Parameters.AddWithValue("@Brn", rec.Brn);
                 cmdInsert.Parameters.AddWithValue("@Brnname", rec.Brnname);
                 cmdInsert.Parameters.AddWithValue("@Regnum", rec.Regnum);
+                cmdInsert.Parameters.AddWithValue("@Place", rec.Place);
 
                 // установка времени и кем добавлена/изменена запись
                 cmdInsert.Parameters.AddWithValue("@Entby", SERVICE_NAME);

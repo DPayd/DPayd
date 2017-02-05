@@ -79,6 +79,7 @@ namespace debts {
             public SqlDecimal Brn;
             public string Brnname;
             public string Regnum;
+            public string Place;
         }
 
         public string getField(string body, string paramName, string endTag = CLOSING_TAG_P) {
