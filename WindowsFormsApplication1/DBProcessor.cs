@@ -215,7 +215,7 @@ namespace debts {
             return true;
         }
 
-        // запись информации о штрафе
+        // установить все штрафы по Tcard в состояние "оплачено"
         public bool setPayedAll(Debt rec) {
             if (conn == null)
                 return false;
@@ -237,9 +237,6 @@ namespace debts {
                 connExec.Close();
 
                 bool result = res > 0;
-                if (!result) {
-                    state = State.ExecSqlError;
-                }
 
                 return result;
             }
