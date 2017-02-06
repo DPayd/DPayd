@@ -129,6 +129,9 @@ namespace debts {
             // соединение со следующей БД
             if (configList.Count == 0) {
                 state = State.Succefull;
+                lastDbName = "";
+                lastVclstamp = "";
+                writeConfig();
                 return false;
             }
 
