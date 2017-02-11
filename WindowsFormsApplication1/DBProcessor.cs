@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Data.SqlTypes;
 using System.IO;
+using System.Windows.Forms;
 using System.Xml.Serialization;
 using static debts.CheckDebts;
 
@@ -45,10 +46,9 @@ namespace debts {
         // переменные для хранения текущего списка автомобилей
         List<Debt> debts = new List<Debt>();
         int currentIndex = 0;
-        int debtsSize = 0;
         bool debtsEnd() {
-            // достигли конца текущего списка атовмобилей
-            return currentIndex >= debtsSize;
+            // достигли конца текущего списка автомобилей
+            return currentIndex >= debts.Count || conn == null;
         }
 
         // конструктор: в нём идёт только чтение конфигурации
@@ -145,7 +145,7 @@ namespace debts {
             conn.Open();
 
             lastDbName = configSection.dbName;
-            lastVclstamp = "";
+            lastVclstamp = restartVclstamp;
 
             state = State.ExecSqlError;
 
@@ -176,6 +176,8 @@ namespace debts {
 
             state = State.Normal;
 
+            currentIndex = 0;
+
             return true;
         }
 
@@ -193,25 +195,25 @@ namespace debts {
 
         // вызывается для чтения следущей записи (параметр varTcard передаётся по ссылке!!!)
         public bool getNextTcard(ref Debt varRecord) {
-            if (conn == null)
-                // первый вызов...
-                if (!connect2NextDBAndReadAll())
-                    // если закончились базы данных, то завершаем
-                    return false;
-
-            while (!debtsEnd()) {
+            while (debtsEnd()) {
                 // дошли до конца списка...
+                if (conn != null) {
+                    ((CheckDebts)Application.OpenForms[0]).log("База данных " + lastDbName + " проверена успешно. Обработано " + debts.Count + " записей.");
+                }
                 if (!connect2NextDBAndReadAll())
                     // если закончились базы данных, то завершаем
                     return false;
             }
 
             // пишем в ини-файл текущее состояние
-            lastVclstamp = currentIndex == 0 ? "" : debts[currentIndex - 1].Vclstamp;
+            if (currentIndex > 0)
+                lastVclstamp = debts[currentIndex - 1].Vclstamp;
             writeConfig();
 
             // присваиваем значения
-            varRecord = debts[currentIndex++];
+            varRecord = debts[currentIndex];
+
+            currentIndex++;
 
             setPayedAll(varRecord);
 
