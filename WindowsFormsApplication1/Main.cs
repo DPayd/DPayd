@@ -40,7 +40,7 @@ namespace debts {
         public CheckDebts() {
             InitializeComponent();
         }
-
+        public dynamic summas;
         const string NULL_SPASE = "";
         const string SINGLE_SPACE = " ";
         const string DOUBLE_SPACE = "  ";
@@ -354,12 +354,14 @@ namespace debts {
 
 
                 string Summa = getField(HTML, "Штраф");
-                if (getFirstNum(Summa) == -1) {
-                    log("Не удалось достать сумму!!! Tcard = " + debts.Tcard);
+
+                try {
+                     summas = Summa.Substring(getFirstNum(Summa), 10);
+                } catch (ArgumentOutOfRangeException e) {
+                    log("Не удалось достать сумму!!! Tcard = " + debts.Tcard + "   Ошибка: " + e.Message);
                     debts.Sum = 0;
                     debts.SumHalf = 0;
-                } else {
-                    dynamic summas = Summa.Substring(getFirstNum(Summa), 10);
+                }
                     number_only(ref summas);
                     decimal summa = Convert.ToDecimal(summas);
                     debts.Sum = summa;
@@ -383,11 +385,9 @@ namespace debts {
                     if (hTML2.IndexOf("strike") == -1) {
                         // debts.PaytoHalf = debts.PaytoHalf.MinValue;
                         debts.SumHalf = 0;
-
-
                     }
-                }
-                // MessageBox.Show("Проверено!!!!!!!!!!!!!12345");
+          
+
                 string LogString = debts.Ordinance + "    " + dte + "   " + debts.Vclstamp + "   Проверено";
                 log(LogString);
                 if (!workDB(debts)) {
