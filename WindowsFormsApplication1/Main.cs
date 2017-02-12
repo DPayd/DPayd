@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Data.SqlTypes;
 using System.IO;
+using System.Drawing;
 
 namespace debts {
     public partial class CheckDebts : Form {
@@ -479,6 +480,34 @@ namespace debts {
         }
 
         private void Awesomium_Windows_Forms_WebControl_ShowCreatedWebView(object sender, ShowCreatedWebViewEventArgs e) {
+
+        }
+
+        private void button1_Click_1(object sender, EventArgs e) {
+
+        }
+
+        private void listBox1_DrawItem(object sender, DrawItemEventArgs e) {
+            if (e.Index < 0) return;
+            //if the item state is selected them change the back color 
+            if ((e.State & DrawItemState.Selected) == DrawItemState.Selected)
+                e = new DrawItemEventArgs(e.Graphics,
+                                          e.Font,
+                                          e.Bounds,
+                                          e.Index,
+                                          e.State ^ DrawItemState.Selected,
+                                          e.ForeColor,
+                                          Color.YellowGreen);//Choose the color
+
+            // Draw the background of the ListBox control for each item.
+            e.DrawBackground();
+            // Draw the current item text
+            e.Graphics.DrawString(listBox1.Items[e.Index].ToString(), e.Font, Brushes.Black, e.Bounds, StringFormat.GenericDefault);
+            // If the ListBox has focus, draw a focus rectangle around the selected item.
+            e.DrawFocusRectangle();
+        }
+
+        private void checkBox1_CheckedChanged(object sender, EventArgs e) {
 
         }
     }

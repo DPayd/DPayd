@@ -40,6 +40,7 @@
             this.button1.TabIndex = 0;
             this.button1.Text = "Начать";
             this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click_1);
             // 
             // button2
             // 
@@ -70,12 +71,13 @@
             this.listBox1.Name = "listBox1";
             this.listBox1.Size = new System.Drawing.Size(907, 82);
             this.listBox1.TabIndex = 4;
+            this.listBox1.DrawItem += new System.Windows.Forms.DrawItemEventHandler(this.listBox1_DrawItem);
             // 
             // CheckDebts
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(906, 491);
+            this.ClientSize = new System.Drawing.Size(912, 491);
             this.Controls.Add(this.listBox1);
             this.Controls.Add(this.webControlMosPgu);
             this.Controls.Add(this.button2);
