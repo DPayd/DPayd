@@ -354,30 +354,36 @@ namespace debts {
 
 
                 string Summa = getField(HTML, "Штраф");
-                dynamic summas = Summa.Substring(getFirstNum(Summa), 10);
-                number_only(ref summas);
-                decimal summa = Convert.ToDecimal(summas);
-                debts.Sum = summa;
-
-                if (hTML2.IndexOf("strike") != -1) {
-                    Summa = Summa.Remove(0, Summa.IndexOf(CLOSING_TAG_SPAN) + 7);
-                    summas = Summa.Substring(getFirstNum(Summa), 10);
+                if (Summa == "") {
+                    log("Не удалось достать сумму!!! Tcard = " + debts.Tcard);
+                } else {
+                    dynamic summas = Summa.Substring(getFirstNum(Summa), 10);
                     number_only(ref summas);
-                    decimal summaHalf = Convert.ToDecimal(summas);
-                    debts.SumHalf = summaHalf;
+                    decimal summa = Convert.ToDecimal(summas);
+                    debts.Sum = summa;
 
-                    dynamic paydtoHalf = Summa.Remove(0, Summa.IndexOf(CLOSING_TAG_SPAN) + 7);
-                    paydtoHalf = Summa.Remove(0, Summa.IndexOf("доступна до:"));
-                    paydtoHalf = paydtoHalf.Remove(0, getFirstNum(paydtoHalf));
-                    paydtoHalf = paydtoHalf.Remove(paydtoHalf.IndexOf("<"), 7);
-                    paydtoHalf = paydtoHalf.Trim();
-                    DateTime payToHalf = DateTime.Parse(paydtoHalf);
-                    debts.PaytoHalf = payToHalf;
-                }
+                    if (hTML2.IndexOf("strike") != -1) {
+                        Summa = Summa.Remove(0, Summa.IndexOf(CLOSING_TAG_SPAN) + 7);
+                        summas = Summa.Substring(getFirstNum(Summa), 10);
+                        number_only(ref summas);
+                        decimal summaHalf = Convert.ToDecimal(summas);
+                        debts.SumHalf = summaHalf;
 
-                if (hTML2.IndexOf("strike") == -1) {
-                    // debts.PaytoHalf = debts.PaytoHalf.MinValue;
-                    debts.SumHalf = 0;
+                        dynamic paydtoHalf = Summa.Remove(0, Summa.IndexOf(CLOSING_TAG_SPAN) + 7);
+                        paydtoHalf = Summa.Remove(0, Summa.IndexOf("доступна до:"));
+                        paydtoHalf = paydtoHalf.Remove(0, getFirstNum(paydtoHalf));
+                        paydtoHalf = paydtoHalf.Remove(paydtoHalf.IndexOf("<"), 7);
+                        paydtoHalf = paydtoHalf.Trim();
+                        DateTime payToHalf = DateTime.Parse(paydtoHalf);
+                        debts.PaytoHalf = payToHalf;
+                    }
+
+                    if (hTML2.IndexOf("strike") == -1) {
+                        // debts.PaytoHalf = debts.PaytoHalf.MinValue;
+                        debts.SumHalf = 0;
+
+
+                    }
                 }
                 // MessageBox.Show("Проверено!!!!!!!!!!!!!12345");
                 string LogString = debts.Ordinance + "    " + dte + "   " + debts.Vclstamp + "   Проверено";
