@@ -510,5 +510,9 @@ namespace debts {
         private void checkBox1_CheckedChanged(object sender, EventArgs e) {
 
         }
+
+        private void CheckDebts_FormClosed(object sender, FormClosedEventArgs e) {
+            WebCore.Shutdown();
+        }
     }
 }

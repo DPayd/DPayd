@@ -85,6 +85,7 @@
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "CheckDebts";
             this.Text = "Проверка штрафов PGU";
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.CheckDebts_FormClosed);
             this.Load += new System.EventHandler(this.Form1_Load);
             this.ResumeLayout(false);
 
