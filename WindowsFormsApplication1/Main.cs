@@ -354,8 +354,10 @@ namespace debts {
 
 
                 string Summa = getField(HTML, "Штраф");
-                if (Summa == "") {
+                if (getFirstNum(Summa) == -1) {
                     log("Не удалось достать сумму!!! Tcard = " + debts.Tcard);
+                    debts.Sum = 0;
+                    debts.SumHalf = 0;
                 } else {
                     dynamic summas = Summa.Substring(getFirstNum(Summa), 10);
                     number_only(ref summas);
