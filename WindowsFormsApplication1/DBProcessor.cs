@@ -261,7 +261,7 @@ namespace debts {
                 "Vclstamp = @Vclstamp, Vcl = @Vcl, Tcard = @Tcard, Reason = @Reason, Dbtdte = @Dbtdte, Ofndte = @Ofndte, " +
                 "Sum = @Sum, SumHalf = @SumHalf, Paytodte = @Paytodte, PaytoHalf = @PaytoHalf, " +
                 "Brn = @Brn, Brnname = @Brnname, Regnum = @Regnum, Place = @Place, " +
-                "Lstchgby = @Lstchgby, Lstchgdte = @Lstchgdte " +
+                "Lstchgby = @Lstchgby, Lstchgdte = @Lstchgdte, Rcdsts = 0 " +
                 "WHERE ID = @ID";
 
             using (SqlConnection connExec = new SqlConnection(connStr)) {

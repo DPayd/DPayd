@@ -41,7 +41,6 @@ namespace debts {
         public CheckDebts() {
             InitializeComponent();
         }
-        public dynamic summas;
         const string NULL_SPASE = "";
         const string SINGLE_SPACE = " ";
         const string DOUBLE_SPACE = "  ";
@@ -62,7 +61,7 @@ namespace debts {
 
         int repeatCntLoadEmpty = 0;
 
-        string number_only(ref dynamic text) {
+        string number_only(string text) {
             // text = text.ToString();
             string resultat = "";
             for (int i = 0; i < text.Length; i++)
@@ -358,37 +357,37 @@ namespace debts {
                 string Summa = getField(HTML, "Штраф");
 
                 try {
-                     summas = Summa.Substring(getFirstNum(Summa), 10);
+                    string summas = Summa.Substring(getFirstNum(Summa), 10);
+                    summas = number_only(summas);
+                    decimal summa = Convert.ToDecimal(summas);
+                    debts.Sum = summa;
                 } catch (ArgumentOutOfRangeException e) {
                     log("Не удалось достать сумму!!! Tcard = " + debts.Tcard + "   Ошибка: " + e.Message);
                     debts.Sum = 0;
                     debts.SumHalf = 0;
                 }
-                    number_only(ref summas);
-                    decimal summa = Convert.ToDecimal(summas);
-                    debts.Sum = summa;
 
-                    if (hTML2.IndexOf("strike") != -1) {
-                        Summa = Summa.Remove(0, Summa.IndexOf(CLOSING_TAG_SPAN) + 7);
-                        summas = Summa.Substring(getFirstNum(Summa), 10);
-                        number_only(ref summas);
-                        decimal summaHalf = Convert.ToDecimal(summas);
-                        debts.SumHalf = summaHalf;
+                if (hTML2.IndexOf("strike") != -1) {
+                    Summa = Summa.Remove(0, Summa.IndexOf(CLOSING_TAG_SPAN) + 7);
+                    string summas = Summa.Substring(getFirstNum(Summa), 10);
+                    summas = number_only(summas);
+                    decimal summaHalf = Convert.ToDecimal(summas);
+                    debts.SumHalf = summaHalf;
 
-                        dynamic paydtoHalf = Summa.Remove(0, Summa.IndexOf(CLOSING_TAG_SPAN) + 7);
-                        paydtoHalf = Summa.Remove(0, Summa.IndexOf("доступна до:"));
-                        paydtoHalf = paydtoHalf.Remove(0, getFirstNum(paydtoHalf));
-                        paydtoHalf = paydtoHalf.Remove(paydtoHalf.IndexOf("<"), 7);
-                        paydtoHalf = paydtoHalf.Trim();
-                        DateTime payToHalf = DateTime.Parse(paydtoHalf);
-                        debts.PaytoHalf = payToHalf;
-                    }
+                    dynamic paydtoHalf = Summa.Remove(0, Summa.IndexOf(CLOSING_TAG_SPAN) + 7);
+                    paydtoHalf = Summa.Remove(0, Summa.IndexOf("доступна до:"));
+                    paydtoHalf = paydtoHalf.Remove(0, getFirstNum(paydtoHalf));
+                    paydtoHalf = paydtoHalf.Remove(paydtoHalf.IndexOf("<"), 7);
+                    paydtoHalf = paydtoHalf.Trim();
+                    DateTime payToHalf = DateTime.Parse(paydtoHalf);
+                    debts.PaytoHalf = payToHalf;
+                }
 
-                    if (hTML2.IndexOf("strike") == -1) {
-                        // debts.PaytoHalf = debts.PaytoHalf.MinValue;
-                        debts.SumHalf = 0;
-                    }
-          
+                if (hTML2.IndexOf("strike") == -1) {
+                    // debts.PaytoHalf = debts.PaytoHalf.MinValue;
+                    debts.SumHalf = 0;
+                }
+
 
                 string LogString = debts.Ordinance + "    " + dte + "   " + debts.Vclstamp + "   Проверено";
                 log(LogString);
