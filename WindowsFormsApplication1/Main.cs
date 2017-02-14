@@ -55,6 +55,7 @@ namespace debts {
         Debt debts = new Debt();
         public Status status = new Status();
         public int waitCirclesCount = 0;
+        public bool errorWaitTooLong = false;
         Gibdd_Reqs Gibdd_Reqs;
         // добавлено Nik
         DBProcessor dbProcessor = new DBProcessor();
@@ -226,6 +227,7 @@ namespace debts {
                 log("process() MODE 1 TCard=" + locTcard + ", state=" + status.state.ToString());
 #endif
                 if (++waitCirclesCount > MAX_WAIT_CIRCLES) {
+                    errorWaitTooLong = true;
                     source_HTML();
 #if DEBUG
                     log("process() END BY MAX_WAIT_CIRCLES, TCard=" + locTcard + ", state=" + status.state.ToString());
@@ -409,7 +411,12 @@ namespace debts {
 #endif
             if (dbProcessor.state == DBProcessor.State.Normal) {
                 //Ввожу данные
-                debts = nextTcard();
+
+                if (errorWaitTooLong)
+                    errorWaitTooLong = false;
+                else // переход к следующему стс только если не было превышения таймаута
+                    debts = nextTcard();
+
                 locTcard = debts.Tcard;
 #if DEBUG
                 log("vvod_and_click() Tcard=" + locTcard);
