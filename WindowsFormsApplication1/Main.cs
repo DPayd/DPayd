@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Data.SqlTypes;
 using System.IO;
 using System.Drawing;
+using DPayed;
 
 namespace debts {
     public partial class CheckDebts : Form {
@@ -55,7 +56,7 @@ namespace debts {
         Debt debts = new Debt();
         public Status status = new Status();
         public int waitCirclesCount = 0;
-
+        Gibdd_Reqs Gibdd_Reqs;
         // добавлено Nik
         DBProcessor dbProcessor = new DBProcessor();
 
@@ -127,6 +128,7 @@ namespace debts {
             public string Brnname;
             public string Regnum;
             public string Place;
+            public string inn;
         }
 
         public void log(string msg, string logName = DEFAULT_LOG_NAME) {
@@ -464,6 +466,8 @@ namespace debts {
 
 
         private void button2_Click(object sender, EventArgs e) {
+            Gibdd_Reqs = new Gibdd_Reqs();
+            Gibdd_Reqs.initGibddDivisions();
             //Process.Start(@"C:\Users\Kostya\Desktop\БЕЗ GIT!!!!\DpayD\WindowsFormsApplication1\bin\Release\Bat.bat");
             /*
             dynamic document = (JSObject)webControl1.ExecuteJavascriptWithResult("document");
