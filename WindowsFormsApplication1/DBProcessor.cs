@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Data.SqlTypes;
 using System.IO;
+using System.Windows.Forms;
 using System.Xml.Serialization;
 using static debts.CheckDebts;
 
@@ -18,8 +19,16 @@ namespace debts {
 
     // класс для доступа к БД
     public class DBProcessor {
+        private const string INI_FILE_NAME = "DPayd.xml";
+
+        public Config config;
+        string lastDbName;
+        string lastVclstamp;
+
+        string restartDbName = "";
+        string restartVclstamp = "";
+
         private SqlConnection conn = null;
-        private SqlConnection connExec = null;
         string connStr = "";
 
         public enum State {
@@ -37,12 +46,10 @@ namespace debts {
         // переменные для хранения текущего списка автомобилей
         List<Debt> debts = new List<Debt>();
         int currentIndex = 0;
-        int debtsSize = 0;
         bool debtsEnd() {
-            // достигли конца текущего списка атовмобилей
-            return currentIndex >= debtsSize;
+            // достигли конца текущего списка автомобилей
+            return currentIndex >= debts.Count || conn == null;
         }
-
 
         // конструктор: в нём идёт только чтение конфигурации
         public DBProcessor() {
@@ -50,19 +57,59 @@ namespace debts {
         }
 
         public class Config {
-            string lastDbName;
-            string lastVclstamp;
-            List<Peremennie> peremennie;
+            public string lastDbName = "";
+            public string lastVclstamp = "";
+            public List<Peremennie> peremennie = new List<Peremennie>();
         }
 
         private void readConfig() {
-            using (Stream stream = new FileStream("DPayd.xml", FileMode.Open)) {
-                XmlSerializer serializer = new XmlSerializer(typeof(List<Peremennie>));
-                List<Peremennie> config = (List<Peremennie>)serializer.Deserialize(stream);
+            /*
+            using (Stream stream = new FileStream(INI_FILE_NAME, FileMode.Create)) {
+                XmlSerializer serializer = new XmlSerializer(typeof(Config));
+                config = new Config();
+                config.lastDbName = "lastDbName";
+                config.lastVclstamp = "lastVclstamp";
+                Peremennie p = new Peremennie();
+                p.Brn = "1,2,3";
+                p.dbName = "dbName";
+                p.srvName = "srvName";
+                config.peremennie.Add(p);
+                config.peremennie.Add(p);
+                config.peremennie.Add(p);
+
+                serializer.Serialize(stream, config);
+                stream.Close();
+            }
+            */
+            using (Stream stream = new FileStream(INI_FILE_NAME, FileMode.Open)) {
+                XmlSerializer serializer = new XmlSerializer(typeof(Config));
+                config = (Config)serializer.Deserialize(stream);
                 configList.Clear();
-                foreach (Peremennie perem in config) {
+                foreach (Peremennie perem in config.peremennie) {
                     configList.Add(perem);
                 }
+
+                restartDbName = config.lastDbName;
+                restartVclstamp = config.lastVclstamp;
+
+                if (!restartDbName.Equals("")) {
+                    // перемещение к базе данных для рестарта
+                    while (configList.Count > 0) {
+                        if (configList[0].dbName.Trim().Equals(restartDbName.Trim()))
+                            break;
+                        configList.RemoveAt(0);
+                    }
+                }
+            }
+        }
+
+        private void writeConfig() {
+            using (Stream stream = new FileStream(INI_FILE_NAME, FileMode.Create)) {
+                XmlSerializer serializer = new XmlSerializer(typeof(Config));
+                config.lastDbName = lastDbName;
+                config.lastVclstamp = lastVclstamp;
+                serializer.Serialize(stream, config);
+                stream.Close();
             }
         }
 
@@ -73,9 +120,6 @@ namespace debts {
             if (conn != null)
                 conn.Close();
             conn = null;
-            if (connExec != null)
-                connExec.Close();
-            connExec = null;
         }
 
         public bool connect2NextDBAndReadAll() {
@@ -85,6 +129,9 @@ namespace debts {
             // соединение со следующей БД
             if (configList.Count == 0) {
                 state = State.Succefull;
+                lastDbName = "";
+                lastVclstamp = "";
+                writeConfig();
                 return false;
             }
 
@@ -96,8 +143,9 @@ namespace debts {
             connStr = configSection.makeConnString();
             conn = new SqlConnection(connStr);
             conn.Open();
-            connExec = new SqlConnection(connStr);
-            connExec.Open();
+
+            lastDbName = configSection.dbName;
+            lastVclstamp = restartVclstamp;
 
             state = State.ExecSqlError;
 
@@ -105,7 +153,7 @@ namespace debts {
                 "SELECT a.*, b.Des40 AS Brnname " +
                 "FROM Vclmst a INNER JOIN " +
                 "Brnmst b ON b.Brn = a.Brn " +
-                "WHERE(a.Brn IN (" + configSection.Brn + ")) " +
+                "WHERE (a.Brn IN (" + configSection.Brn + ")) AND (Vclstamp > '" + restartVclstamp + "')" +
                 //"      AND(a.Rcdsts < 9) " +
                 "ORDER BY a.Vclstamp";
 
@@ -128,6 +176,8 @@ namespace debts {
 
             state = State.Normal;
 
+            currentIndex = 0;
+
             return true;
         }
 
@@ -145,24 +195,58 @@ namespace debts {
 
         // вызывается для чтения следущей записи (параметр varTcard передаётся по ссылке!!!)
         public bool getNextTcard(ref Debt varRecord) {
-            if (conn == null)
-                // первый вызов...
-                if (!connect2NextDBAndReadAll())
-                    // если закончились базы данных, то завершаем
-                    return false;
-
-            while (!debtsEnd()) {
+            while (debtsEnd()) {
                 // дошли до конца списка...
+                if (conn != null) {
+                    ((CheckDebts)Application.OpenForms[0]).log("База данных " + lastDbName + " проверена успешно. Обработано " + debts.Count + " записей.");
+                }
                 if (!connect2NextDBAndReadAll())
                     // если закончились базы данных, то завершаем
                     return false;
             }
 
+            // пишем в ини-файл текущее состояние
+            if (currentIndex > 0)
+                lastVclstamp = debts[currentIndex - 1].Vclstamp;
+            writeConfig();
+
             // присваиваем значения
-            varRecord = debts[currentIndex++];
+            varRecord = debts[currentIndex];
+
+            currentIndex++;
+
+            setPayedAll(varRecord);
 
             return true;
         }
+
+        // установить все штрафы по Tcard в состояние "оплачено"
+        public bool setPayedAll(Debt rec) {
+            if (conn == null)
+                return false;
+            if (rec.ID < 0)
+                return false;
+
+            string sqlUpdate =
+                "UPDATE Debts " +
+                "SET Rcdsts = 1 " +
+                "WHERE Tcard = @Tcard";
+
+            using (SqlConnection connExec = new SqlConnection(connStr)) {
+                SqlCommand cmdUpdate = new SqlCommand(sqlUpdate, connExec);
+
+                cmdUpdate.Parameters.AddWithValue("@Tcard", rec.Tcard);
+
+                connExec.Open();
+                int res = cmdUpdate.ExecuteNonQuery();
+                connExec.Close();
+
+                bool result = res > 0;
+
+                return result;
+            }
+        }
+
 
         // запись информации о штрафе
         public bool update(Debt rec) {
@@ -176,8 +260,8 @@ namespace debts {
                 "SET " +
                 "Vclstamp = @Vclstamp, Vcl = @Vcl, Tcard = @Tcard, Reason = @Reason, Dbtdte = @Dbtdte, Ofndte = @Ofndte, " +
                 "Sum = @Sum, SumHalf = @SumHalf, Paytodte = @Paytodte, PaytoHalf = @PaytoHalf, " +
-                "Brn = @Brn, Brnname = @Brnname, Regnum = @Regnum, " +
-                "Lstchgby = @Lstchgby, Lstchgdte = @Lstchgdte " +
+                "Brn = @Brn, Brnname = @Brnname, Regnum = @Regnum, Place = @Place, " +
+                "Lstchgby = @Lstchgby, Lstchgdte = @Lstchgdte, Rcdsts = 0 " +
                 "WHERE ID = @ID";
 
             using (SqlConnection connExec = new SqlConnection(connStr)) {
@@ -196,6 +280,7 @@ namespace debts {
                 cmdUpdate.Parameters.AddWithValue("@Brn", rec.Brn);
                 cmdUpdate.Parameters.AddWithValue("@Brnname", rec.Brnname);
                 cmdUpdate.Parameters.AddWithValue("@Regnum", rec.Regnum);
+                cmdUpdate.Parameters.AddWithValue("@Place", rec.Place);
 
                 // установка времени и кем изменена запись
                 cmdUpdate.Parameters.AddWithValue("@Lstchgby", SERVICE_NAME);
@@ -206,8 +291,9 @@ namespace debts {
                 connExec.Close();
 
                 bool result = res > 0;
-                if (!result)
+                if (!result) {
                     state = State.ExecSqlError;
+                }
 
                 return result;
             }
@@ -220,12 +306,12 @@ namespace debts {
             string sqlInsert =
                 "INSERT INTO Debts (" +
                 "Vclstamp, Vcl, Tcard, Reason, Ordinance, Dbtdte, Ofndte, " +
-                "Sum, SumHalf, Paytodte, PaytoHalf, Brn, Brnname, Regnum, " +
+                "Sum, SumHalf, Paytodte, PaytoHalf, Brn, Brnname, Regnum, Place, " +
                 "Entby, Entdte, Lstchgby, Lstchgdte" +
                 ") " +
                 "VALUES(" +
                 "@Vclstamp, @Vcl, @Tcard, @Reason, @Ordinance, @Dbtdte, @Ofndte, " +
-                "@Sum, @SumHalf, @Paytodte, @PaytoHalf, @Brn, @Brnname, @Regnum, " +
+                "@Sum, @SumHalf, @Paytodte, @PaytoHalf, @Brn, @Brnname, @Regnum, @Place, " +
                 "@Entby, @Entdte, @Lstchgby, @Lstchgdte" +
                 ")";
 
@@ -245,6 +331,7 @@ namespace debts {
                 cmdInsert.Parameters.AddWithValue("@Brn", rec.Brn);
                 cmdInsert.Parameters.AddWithValue("@Brnname", rec.Brnname);
                 cmdInsert.Parameters.AddWithValue("@Regnum", rec.Regnum);
+                cmdInsert.Parameters.AddWithValue("@Place", rec.Place);
 
                 // установка времени и кем добавлена/изменена запись
                 cmdInsert.Parameters.AddWithValue("@Entby", SERVICE_NAME);
@@ -257,8 +344,9 @@ namespace debts {
                 connExec.Close();
 
                 bool result = res > 0;
-                if (!result)
+                if (!result) {
                     state = State.ExecSqlError;
+                }
 
                 return result;
             }
